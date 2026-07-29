@@ -13,5 +13,8 @@ venv/
 Thumbs.db
 .DS_Store
 
+# Runtime diagnostics written by the add-in
+debug.log
+
 # WorkBuddy local data
 .workbuddy/

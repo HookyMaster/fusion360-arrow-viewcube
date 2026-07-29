@@ -3,6 +3,8 @@
         "left": "LEFT",
         "right": "RIGHT",
         "up": "UP",
-        "down": "DOWN"
+        "down": "DOWN",
+        "zoom_in": "PAGEUP",
+        "zoom_out": "PAGEDOWN"
     }
 }

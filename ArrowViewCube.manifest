@@ -3,10 +3,10 @@
   "type": "addin",
   "author": "HookyMaster",
   "description": {
-    "": "Rotate the active Fusion 360 view with the keyboard arrow keys.",
-    "zh-CN": "使用键盘方向键旋转 Fusion 360 当前视图。"
+    "": "Rotate and zoom the active Fusion 360 view with the keyboard.",
+    "zh-CN": "使用键盘旋转和缩放 Fusion 360 当前视图。"
   },
-  "version": "1.3.0",
+  "version": "1.4.0",
   "runOnStartup": true,
   "supportedOS": "windows|mac"
 }

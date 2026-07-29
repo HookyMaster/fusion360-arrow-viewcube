@@ -3,9 +3,9 @@
 [![Release](https://img.shields.io/github/v/release/HookyMaster/fusion360-arrow-viewcube?label=release)](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/latest)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-适用于 Windows 和 macOS 的 Autodesk Fusion 360 插件。Fusion 窗口位于前台时，使用键盘方向键旋转当前三维视图。
+适用于 Windows 和 macOS 的 Autodesk Fusion 360 插件。Fusion 窗口位于前台时，使用键盘旋转和缩放当前三维视图。
 
-A cross-platform Autodesk Fusion 360 add-in for Windows and macOS. Rotate the active 3D view with the keyboard arrow keys while Fusion is in the foreground.
+A cross-platform Autodesk Fusion 360 add-in for Windows and macOS. Rotate and zoom the active 3D view with the keyboard while Fusion is in the foreground.
 
 ## 下载 / Download
 
@@ -17,41 +17,148 @@ Latest release **v1.3.0** (Windows and macOS):
 
 ## 操作 / Controls
 
-**Windows**（桶滚修饰键默认 `Ctrl`）：
+所有操作在 Fusion 窗口位于前台时生效。**按住按键可连续操作**（初始延迟后自动重复），松开即停。
 
-- `←` / `→`：水平旋转
-- `↑` / `↓`：垂直旋转
-- `Ctrl+→`：向右桶滚
-- `Ctrl+←`：向左桶滚
+### 旋转（轨道环绕）
 
-**macOS**（桶滚修饰键默认 `⌘ Command`）：
+| 按键 | 效果 |
+|------|------|
+| `←` / `→` | 绕模型**水平旋转**（左右环绕观察） |
+| `↑` / `↓` | 绕模型**垂直旋转**（俯仰观察） |
 
-- `←` / `→`：水平旋转
-- `↑` / `↓`：垂直旋转
-- `⌘+→`：向右桶滚
-- `⌘+←`：向左桶滚
+- 旋转以当前视角中心（相机目标点）为轴心。
+- 每步旋转 **5°**（可在代码中调整，见下文）。
 
-按住方向键可连续旋转。每次旋转 5°。插件不会修改模型，只会更新当前视口相机。
+### 桶滚（画面倾斜）
 
-**Windows** (barrel-roll modifier defaults to `Ctrl`):
+需同时按住**修饰键**（Windows: `Ctrl`；macOS: `⌘ Command`）：
 
-- `←` / `→`: horizontal orbit
-- `↑` / `↓`: vertical orbit
-- `Ctrl+→`: roll right
-- `Ctrl+←`: roll left
+| 按键 | 效果 |
+|------|------|
+| `Ctrl+←` / `⌘+←` | 画面逆时针倾斜 |
+| `Ctrl+→` / `⌘+→` | 画面顺时针倾斜 |
 
-**macOS** (barrel-roll modifier defaults to `⌘ Command`):
+- 桶滚围绕当前视线方向旋转画面，不改变观察角度。
+- 每步同样 5°。
 
-- `←` / `→`: horizontal orbit
-- `↑` / `↓`: vertical orbit
-- `⌘+→`: roll right
-- `⌘+←`: roll left
+### 缩放
 
-Hold an arrow key to rotate continuously. Each step is 5°. The add-in never modifies the model; it only updates the active viewport camera.
+提供**两套等价方式**，可任选其一或组合使用：
 
-## 自定义按键绑定
+| 按键 | 效果 |
+|------|------|
+| `PageUp` | **放大**（拉近视图） |
+| `PageDown` | **缩小**（拉远视图） |
+| `Ctrl+↑` / `⌘+↑` | **放大**（等价于 PageUp） |
+| `Ctrl+↓` / `⌘+↓` | **缩小**（等价于 PageDown） |
 
-编辑插件目录中的 `settings.json`：
+- 缩放通过调整相机 `viewExtents` 实现（Fusion 原生方式），不改变相机位置。
+- 每步缩放约 **1.18 倍**（放大时视图范围 ×0.85，缩小时 ÷0.85）。
+- macOS 笔记本无独立 PageUp/PageDown 键时，可用 `Fn+↑`/`Fn+↓` 代替，或直接用 `⌘+↑`/`⌘+↓`。
+
+### 注意事项
+
+- 插件**不会修改任何模型几何**，只更新当前视口的相机参数。
+- 操作仅在 Fusion 位于前台（活动窗口）时响应，切走即暂停。
+
+---
+
+All controls work while Fusion is the foreground window. **Hold a key for continuous operation** (auto-repeats after a short initial delay); release to stop.
+
+### Orbit (rotation)
+
+| Key | Effect |
+|-----|--------|
+| `←` / `→` | **Horizontal orbit** (pan around the model) |
+| `↑` / `↓` | **Vertical orbit** (tilt up/down) |
+
+- Rotation pivots around the camera target (current view center).
+- Each step is **5°** (adjustable in code, see below).
+
+### Roll (tilt the viewport)
+
+Hold the **modifier key** (Windows: `Ctrl`; macOS: `⌘ Command`) simultaneously:
+
+| Key | Effect |
+|-----|--------|
+| `Ctrl+←` / `⌘+←` | Tilt counter-clockwise |
+| `Ctrl+→` / `⌘+→` | Tilt clockwise |
+
+- Roll rotates the view around the current line of sight without changing the viewing angle.
+- Each step is also 5°.
+
+### Zoom
+
+Two equivalent methods — use whichever is convenient:
+
+| Key | Effect |
+|-----|--------|
+| `PageUp` | **Zoom in** (closer) |
+| `PageDown` | **Zoom out** (farther) |
+| `Ctrl+↑` / `⌘+↑` | **Zoom in** (same as PageUp) |
+| `Ctrl+↓` / `⌘+↓` | **Zoom out** (same as PageDown) |
+
+- Zoom adjusts the camera `viewExtents` (Fusion's native method) without moving the camera.
+- Each step is approximately **1.18×** (view extents ×0.85 to zoom in, ÷0.85 to zoom out).
+- On MacBook keyboards without dedicated PageUp/PageDown, use `Fn+↑`/`Fn+↓` or simply `⌘+↑`/`⌘+↓`.
+
+### Notes
+
+- The add-in **never modifies model geometry** — it only updates the active viewport camera.
+- Controls respond only while Fusion is the foreground (active) window.
+
+## 自定义按键绑定 / Custom Key Bindings
+
+> ⚠️ **警告 / Warning**
+>
+> **强烈不建议修改默认按键绑定。** 默认配置经过充分测试，在 Windows 和 macOS 上均工作良好。擅自修改可能导致：
+> - 按键与 Fusion 内置命令冲突，触发意外操作；
+> - 多个动作绑定到同一按键，导致行为混乱；
+> - 配置错误时插件回退到默认值（但不会报错提示）。
+>
+> 如确需修改，请**只改必须改的项**，保留其余默认值，修改后立即在 Fusion 中验证。
+>
+> **We strongly advise against changing the default key bindings.** The defaults are well-tested on both Windows and macOS. Modifying them may cause:
+> - Conflicts with Fusion's built-in shortcuts, triggering unintended actions;
+> - Multiple actions bound to the same key, causing erratic behavior;
+> - Silent fallback to defaults if the config is invalid (no error is shown).
+>
+> If you must change bindings, **modify only what you need**, keep everything else at defaults, and test in Fusion immediately after saving.
+
+编辑插件目录中的 `settings.json`。文件采用**增量覆盖**设计：只需写出要修改的项，未列出的自动使用默认值。
+
+Edit `settings.json` in the add-in folder. The file uses **incremental override**: list only the entries you want to change; anything omitted falls back to its default.
+
+### 默认绑定 / Default bindings
+
+```json
+{
+  "bindings": {
+    "left": "LEFT",
+    "right": "RIGHT",
+    "up": "UP",
+    "down": "DOWN",
+    "roll_modifier": "CTRL",
+    "zoom_in": "PAGEUP",
+    "zoom_out": "PAGEDOWN"
+  }
+}
+```
+
+| 键名 | 作用 | 默认值（Windows / macOS） |
+|------|------|---------------------------|
+| `left` / `right` | 水平旋转 | `LEFT` / `RIGHT` |
+| `up` / `down` | 垂直旋转 | `UP` / `DOWN` |
+| `roll_modifier` | 桶滚 + 缩放修饰键 | `CTRL` / `COMMAND` |
+| `zoom_in` / `zoom_out` | 独立缩放键 | `PAGEUP` / `PAGEDOWN` |
+
+> `roll_modifier` 在 macOS 上默认为 `COMMAND`（无需在 settings.json 中写出，代码自动适配平台）。
+
+### 修改示例 / Example
+
+例如想把旋转改为 WASD、修饰键改为 Shift：
+
+For example, to switch orbit to WASD and the modifier to Shift:
 
 ```json
 {
@@ -65,18 +172,30 @@ Hold an arrow key to rotate continuously. Each step is 5°. The add-in never mod
 }
 ```
 
-保存后会自动生效，无需重启插件。默认旋转键为 `LEFT`、`RIGHT`、`UP`、`DOWN`；桶滚修饰键默认 Windows 为 `CTRL`、macOS 为 `COMMAND`。例如改用 `SHIFT` 后，`Shift+Right` 和 `Shift+Left` 执行桶滚。`settings.json` 在 Windows 与 macOS 上通用（路径自动适配），键名写法一致。
+此时 `Shift+A`/`Shift+D` 执行桶滚，`Shift+W`/`Shift+S` 执行缩放；`PageUp`/`PageDown` 仍可用于缩放（未改动的项保持默认）。
 
-支持：
+Here `Shift+A`/`Shift+D` roll, `Shift+W`/`Shift+S` zoom; `PageUp`/`PageDown` still zoom (unchanged entries keep their defaults).
 
-- 方向键：`LEFT`、`RIGHT`、`UP`、`DOWN`
-- 字母：`A`–`Z`
-- 数字：`0`–`9`
-- 功能键：`F1`–`F12`
-- 修饰键：`CTRL`、`SHIFT`、`ALT`，以及仅 macOS 的 `COMMAND`
-- 常用键：`SPACE`、`ENTER`、`TAB`、`ESC`、`HOME`、`END`、`PAGEUP`、`PAGEDOWN`、`INSERT`、`DELETE`
+### 支持的键名 / Supported key names
 
-四个动作必须绑定到不同按键。配置无效时，插件会自动回退到默认方向键，并将原因写入 Fusion 日志。
+- 方向键 / Arrows: `LEFT`、`RIGHT`、`UP`、`DOWN`
+- 字母 / Letters: `A`–`Z`
+- 数字 / Digits: `0`–`9`
+- 功能键 / Function keys: `F1`–`F12`
+- 修饰键 / Modifiers: `CTRL`、`SHIFT`、`ALT`、`COMMAND`（COMMAND 仅 macOS）
+- 常用键 / Common: `SPACE`、`ENTER`、`TAB`、`ESC`、`HOME`、`END`、`PAGEUP`、`PAGEDOWN`、`INSERT`、`DELETE`
+
+### 约束 / Constraints
+
+- `left`/`right`/`up`/`down` 四个动作**必须绑定到不同按键**，否则配置无效。
+- 配置无效时，插件**静默回退到默认方向键**，错误原因写入 Fusion 日志和插件目录下的 `debug.log`。
+- 保存后**立即生效**，无需重启插件。
+- `settings.json` 在 Windows 与 macOS 上通用，键名写法一致，路径自动适配。
+
+- The four orbit actions **must each use a different key**, otherwise the config is rejected.
+- On invalid config the add-in **silently falls back to the default arrow keys**; the reason is logged to Fusion's log and to `debug.log` in the add-in folder.
+- Changes take effect **immediately** on save — no restart needed.
+- `settings.json` works identically on Windows and macOS with the same key names.
 
 ## 安装 / Install
 
@@ -101,15 +220,16 @@ Hold an arrow key to rotate continuously. Each step is 5°. The add-in never mod
 > "Input Monitoring / Accessibility" permission (System Settings → Privacy & Security).
 > Without it the add-in cannot read the arrow keys. Restart Fusion after granting access.
 
-## 调整旋转速度
+## 调整旋转和缩放速度
 
 编辑 `ArrowViewCube.py` 顶部的：
 
 ```python
 STEP_DEGREES = 5.0
+ZOOM_STEP = 0.85
 ```
 
-数值越大，每次按键旋转得越快。修改后，在 Fusion 的“附加模块”窗口中停止并重新运行插件。
+`STEP_DEGREES` 越大，每次按键旋转得越快。`ZOOM_STEP` 越接近 0，每次按键缩放幅度越大（小于 1，放大时视图范围乘以该值）。修改后，在 Fusion 的“附加模块”窗口中停止并重新运行插件。
 
 ## 限制 / Limitations
 

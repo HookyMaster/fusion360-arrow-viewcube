@@ -15,11 +15,25 @@ IS_WINDOWS = platform.system() == 'Windows'
 
 EVENT_ID = 'hookmaster.arrow_view_cube.rotate'
 STEP_DEGREES = 5.0
+# Zoom scales the camera viewExtents (the proven Fusion zoom method). A value
+# < 1 shrinks the extents (zoom in); zoom-out uses the reciprocal.
+ZOOM_STEP = 0.85
 POLL_INTERVAL_SECONDS = 0.015
 INITIAL_REPEAT_DELAY_SECONDS = 0.28
 REPEAT_INTERVAL_SECONDS = 0.045
 
 SETTINGS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'settings.json')
+DEBUG_LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'debug.log')
+
+
+def _debug_log(message):
+    # _app.log output is not always visible in Fusion's log files, so mirror
+    # startup/runtime diagnostics to a file next to settings.json for debugging.
+    try:
+        with open(DEBUG_LOG_PATH, 'a', encoding='utf-8') as log_file:
+            log_file.write('{}  {}\n'.format(time.strftime('%Y-%m-%d %H:%M:%S'), message))
+    except Exception:
+        pass
 DEFAULT_BINDINGS = {
     'left': 'LEFT',
     'right': 'RIGHT',
@@ -27,6 +41,10 @@ DEFAULT_BINDINGS = {
     'down': 'DOWN',
     # Platform-appropriate default modifier: Command on macOS, Ctrl on Windows.
     'roll_modifier': 'COMMAND' if IS_MAC else 'CTRL',
+    # Dedicated zoom keys, read by the same poll loop as the arrows. They zoom
+    # regardless of whether the roll modifier is held.
+    'zoom_in': 'PAGEUP',
+    'zoom_out': 'PAGEDOWN',
 }
 WINDOWS_KEYS = {
     'BACKSPACE': 0x08,
@@ -106,6 +124,7 @@ _state_lock = threading.Lock()
 _pending_dx = 0
 _pending_dy = 0
 _pending_roll = 0
+_pending_zoom = 0
 _event_queued = False
 
 
@@ -199,7 +218,7 @@ def _rotate_vector(vector, axis, angle_radians):
     return _add(_add(term_1, term_2), term_3)
 
 
-def _rotate_camera(dx, dy, roll):
+def _rotate_camera(dx, dy, roll, zoom=0):
     viewport = _app.activeViewport
     if not viewport:
         return
@@ -230,6 +249,12 @@ def _rotate_camera(dx, dy, roll):
         roll_angle = math.radians(-STEP_DEGREES * roll)
         up = _rotate_vector(up, view_direction, roll_angle)
 
+    # Zoom: scale the camera viewExtents — the Fusion-native zoom method
+    # (matches Autodesk's own approach). Zooming out uses the reciprocal.
+    if zoom:
+        extents = camera.viewExtents
+        camera.viewExtents = extents * (ZOOM_STEP ** zoom)
+
     camera.eye = adsk.core.Point3D.create(
         target.x + eye_offset.x,
         target.y + eye_offset.y,
@@ -247,18 +272,20 @@ class _RotateEventHandler(adsk.core.CustomEventHandler):
         super().__init__()
 
     def notify(self, _args):
-        global _pending_dx, _pending_dy, _pending_roll, _event_queued
+        global _pending_dx, _pending_dy, _pending_roll, _pending_zoom, _event_queued
         try:
             with _state_lock:
                 dx = _pending_dx
                 dy = _pending_dy
                 roll = _pending_roll
+                zoom = _pending_zoom
                 _pending_dx = 0
                 _pending_dy = 0
                 _pending_roll = 0
+                _pending_zoom = 0
                 _event_queued = False
-            if dx or dy or roll:
-                _rotate_camera(dx, dy, roll)
+            if dx or dy or roll or zoom:
+                _rotate_camera(dx, dy, roll, zoom)
         except Exception:
             _app.log('ArrowViewCube error:\n' + traceback.format_exc())
 
@@ -345,13 +372,14 @@ def _fusion_is_foreground():
     return _fusion_is_foreground_windows()
 
 
-def _queue_rotation(dx, dy, roll=0):
-    global _pending_dx, _pending_dy, _pending_roll, _event_queued
+def _queue_rotation(dx, dy, roll=0, zoom=0):
+    global _pending_dx, _pending_dy, _pending_roll, _pending_zoom, _event_queued
     should_fire = False
     with _state_lock:
         _pending_dx += dx
         _pending_dy += dy
         _pending_roll += roll
+        _pending_zoom += zoom
         if not _event_queued:
             _event_queued = True
             should_fire = True
@@ -401,12 +429,29 @@ def _poll_keyboard():
                 fired.append(key)
 
         horizontal = int(bindings['right'] in fired) - int(bindings['left'] in fired)
-        dy = int(bindings['up'] in fired) - int(bindings['down'] in fired)
+        vertical = int(bindings['up'] in fired) - int(bindings['down'] in fired)
         modifier_down = _key_down(bindings['roll_modifier'])
-        dx = 0 if modifier_down else horizontal
-        roll = horizontal if modifier_down else 0
-        if dx or dy or roll:
-            _queue_rotation(dx, dy, roll)
+        # Dedicated zoom keys (PageUp/PageDown by default) always zoom,
+        # regardless of the roll modifier.
+        page_zoom = int(bindings['zoom_in'] in fired) - int(bindings['zoom_out'] in fired)
+
+        # Unified for both platforms: the modifier reassigns the axes.
+        # No modifier: horizontal->orbit yaw, vertical->orbit pitch.
+        # With modifier (Ctrl on Windows, Command on macOS):
+        #   horizontal->roll, vertical->zoom.
+        if modifier_down:
+            dx = 0
+            dy = 0
+            roll = horizontal
+            zoom = vertical + page_zoom
+        else:
+            dx = horizontal
+            dy = vertical
+            roll = 0
+            zoom = page_zoom
+
+        if dx or dy or roll or zoom:
+            _queue_rotation(dx, dy, roll, zoom)
 
 
 def run(_context):
@@ -421,6 +466,7 @@ def run(_context):
         _custom_event = _app.registerCustomEvent(EVENT_ID)
         _event_handler = _RotateEventHandler()
         _custom_event.add(_event_handler)
+        _debug_log('custom event registered')
 
         _stop_event.clear()
         _poll_thread = threading.Thread(
@@ -429,8 +475,10 @@ def run(_context):
             daemon=True,
         )
         _poll_thread.start()
+        _debug_log('poll thread started; add-in ready')
         _app.log('ArrowViewCube started. Keyboard bindings loaded from settings.json.')
     except Exception:
+        _debug_log('STARTUP FAILED:\n' + traceback.format_exc())
         if _app:
             _app.log('ArrowViewCube startup error:\n' + traceback.format_exc())
         raise
