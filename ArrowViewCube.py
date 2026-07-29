@@ -15,6 +15,7 @@ IS_WINDOWS = platform.system() == 'Windows'
 
 EVENT_ID = 'hookmaster.arrow_view_cube.rotate'
 STEP_DEGREES = 5.0
+ZOOM_FACTOR = 1.2
 POLL_INTERVAL_SECONDS = 0.015
 INITIAL_REPEAT_DELAY_SECONDS = 0.28
 REPEAT_INTERVAL_SECONDS = 0.045
@@ -27,6 +28,8 @@ DEFAULT_BINDINGS = {
     'down': 'DOWN',
     # Platform-appropriate default modifier: Command on macOS, Ctrl on Windows.
     'roll_modifier': 'COMMAND' if IS_MAC else 'CTRL',
+    'zoom_in': 'PAGEUP',
+    'zoom_out': 'PAGEDOWN',
 }
 WINDOWS_KEYS = {
     'BACKSPACE': 0x08,
@@ -106,6 +109,7 @@ _state_lock = threading.Lock()
 _pending_dx = 0
 _pending_dy = 0
 _pending_roll = 0
+_pending_zoom = 0
 _event_queued = False
 
 
@@ -147,9 +151,9 @@ def _load_bindings():
             if action in configured:
                 bindings[action] = configured[action]
         resolved = {action: _key_name_to_vk(name) for action, name in bindings.items()}
-        action_keys = [resolved[action] for action in ('left', 'right', 'up', 'down')]
+        action_keys = [resolved[action] for action in ('left', 'right', 'up', 'down', 'zoom_in', 'zoom_out')]
         if len(set(action_keys)) != len(action_keys):
-            raise ValueError('Each rotation action must use a different key.')
+            raise ValueError('Each action must use a different key.')
         return resolved
     except FileNotFoundError:
         return {action: _key_name_to_vk(name) for action, name in DEFAULT_BINDINGS.items()}
@@ -199,7 +203,7 @@ def _rotate_vector(vector, axis, angle_radians):
     return _add(_add(term_1, term_2), term_3)
 
 
-def _rotate_camera(dx, dy, roll):
+def _rotate_camera(dx, dy, roll, zoom=0):
     viewport = _app.activeViewport
     if not viewport:
         return
@@ -230,6 +234,11 @@ def _rotate_camera(dx, dy, roll):
         roll_angle = math.radians(-STEP_DEGREES * roll)
         up = _rotate_vector(up, view_direction, roll_angle)
 
+    # Zoom: scale the eye-target distance (positive zoom = closer to target).
+    if zoom:
+        scale = ZOOM_FACTOR ** (-zoom)
+        eye_offset = _scaled(eye_offset, scale)
+
     camera.eye = adsk.core.Point3D.create(
         target.x + eye_offset.x,
         target.y + eye_offset.y,
@@ -247,18 +256,20 @@ class _RotateEventHandler(adsk.core.CustomEventHandler):
         super().__init__()
 
     def notify(self, _args):
-        global _pending_dx, _pending_dy, _pending_roll, _event_queued
+        global _pending_dx, _pending_dy, _pending_roll, _pending_zoom, _event_queued
         try:
             with _state_lock:
                 dx = _pending_dx
                 dy = _pending_dy
                 roll = _pending_roll
+                zoom = _pending_zoom
                 _pending_dx = 0
                 _pending_dy = 0
                 _pending_roll = 0
+                _pending_zoom = 0
                 _event_queued = False
-            if dx or dy or roll:
-                _rotate_camera(dx, dy, roll)
+            if dx or dy or roll or zoom:
+                _rotate_camera(dx, dy, roll, zoom)
         except Exception:
             _app.log('ArrowViewCube error:\n' + traceback.format_exc())
 
@@ -345,13 +356,14 @@ def _fusion_is_foreground():
     return _fusion_is_foreground_windows()
 
 
-def _queue_rotation(dx, dy, roll=0):
-    global _pending_dx, _pending_dy, _pending_roll, _event_queued
+def _queue_rotation(dx, dy, roll=0, zoom=0):
+    global _pending_dx, _pending_dy, _pending_roll, _pending_zoom, _event_queued
     should_fire = False
     with _state_lock:
         _pending_dx += dx
         _pending_dy += dy
         _pending_roll += roll
+        _pending_zoom += zoom
         if not _event_queued:
             _event_queued = True
             should_fire = True
@@ -401,12 +413,28 @@ def _poll_keyboard():
                 fired.append(key)
 
         horizontal = int(bindings['right'] in fired) - int(bindings['left'] in fired)
-        dy = int(bindings['up'] in fired) - int(bindings['down'] in fired)
+        vertical = int(bindings['up'] in fired) - int(bindings['down'] in fired)
         modifier_down = _key_down(bindings['roll_modifier'])
-        dx = 0 if modifier_down else horizontal
-        roll = horizontal if modifier_down else 0
-        if dx or dy or roll:
-            _queue_rotation(dx, dy, roll)
+
+        if IS_MAC:
+            # Command reassigns both axes: horizontal->roll, vertical->zoom.
+            dx = 0 if modifier_down else horizontal
+            roll = horizontal if modifier_down else 0
+            dy = 0 if modifier_down else vertical
+            zoom = vertical if modifier_down else 0
+        else:
+            # Ctrl reassigns horizontal only; vertical stays pitch.
+            # Zoom uses dedicated PageUp/PageDown keys, independent of modifier.
+            dx = 0 if modifier_down else horizontal
+            roll = horizontal if modifier_down else 0
+            dy = vertical
+            zoom = (
+                int(bindings['zoom_in'] in fired)
+                - int(bindings['zoom_out'] in fired)
+            )
+
+        if dx or dy or roll or zoom:
+            _queue_rotation(dx, dy, roll, zoom)
 
 
 def run(_context):

@@ -3,17 +3,17 @@
 [![Release](https://img.shields.io/github/v/release/HookyMaster/fusion360-arrow-viewcube?label=release)](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/latest)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-适用于 Windows 和 macOS 的 Autodesk Fusion 360 插件。Fusion 窗口位于前台时，使用键盘方向键旋转当前三维视图。
+适用于 Windows 和 macOS 的 Autodesk Fusion 360 插件。Fusion 窗口位于前台时，使用键盘旋转和缩放当前三维视图。
 
-A cross-platform Autodesk Fusion 360 add-in for Windows and macOS. Rotate the active 3D view with the keyboard arrow keys while Fusion is in the foreground.
+A cross-platform Autodesk Fusion 360 add-in for Windows and macOS. Rotate and zoom the active 3D view with the keyboard while Fusion is in the foreground.
 
 ## 下载 / Download
 
-最新版本 **v1.3.0**（支持 Windows 和 macOS）：
-[直接下载 ArrowViewCube-v1.3.0.zip](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/download/v1.3.0/ArrowViewCube-v1.3.0.zip)，或前往 [Releases](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/latest) 页面查看所有版本。
+最新版本 **v1.4.0**（支持 Windows 和 macOS）：
+[直接下载 ArrowViewCube-v1.4.0.zip](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/download/v1.4.0/ArrowViewCube-v1.4.0.zip)，或前往 [Releases](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/latest) 页面查看所有版本。
 
-Latest release **v1.3.0** (Windows and macOS):
-[Download ArrowViewCube-v1.3.0.zip directly](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/download/v1.3.0/ArrowViewCube-v1.3.0.zip), or visit the [Releases](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/latest) page for all versions.
+Latest release **v1.4.0** (Windows and macOS):
+[Download ArrowViewCube-v1.4.0.zip directly](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/download/v1.4.0/ArrowViewCube-v1.4.0.zip), or visit the [Releases](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/latest) page for all versions.
 
 ## 操作 / Controls
 
@@ -23,6 +23,8 @@ Latest release **v1.3.0** (Windows and macOS):
 - `↑` / `↓`：垂直旋转
 - `Ctrl+→`：向右桶滚
 - `Ctrl+←`：向左桶滚
+- `PageUp`：放大（拉近）
+- `PageDown`：缩小（拉远）
 
 **macOS**（桶滚修饰键默认 `⌘ Command`）：
 
@@ -30,8 +32,10 @@ Latest release **v1.3.0** (Windows and macOS):
 - `↑` / `↓`：垂直旋转
 - `⌘+→`：向右桶滚
 - `⌘+←`：向左桶滚
+- `⌘+↑`：放大（拉近）
+- `⌘+↓`：缩小（拉远）
 
-按住方向键可连续旋转。每次旋转 5°。插件不会修改模型，只会更新当前视口相机。
+按住方向键可连续旋转或缩放。每次旋转 5°，每次缩放约 1.2 倍。插件不会修改模型，只会更新当前视口相机。
 
 **Windows** (barrel-roll modifier defaults to `Ctrl`):
 
@@ -39,6 +43,8 @@ Latest release **v1.3.0** (Windows and macOS):
 - `↑` / `↓`: vertical orbit
 - `Ctrl+→`: roll right
 - `Ctrl+←`: roll left
+- `PageUp`: zoom in
+- `PageDown`: zoom out
 
 **macOS** (barrel-roll modifier defaults to `⌘ Command`):
 
@@ -46,8 +52,10 @@ Latest release **v1.3.0** (Windows and macOS):
 - `↑` / `↓`: vertical orbit
 - `⌘+→`: roll right
 - `⌘+←`: roll left
+- `⌘+↑`: zoom in
+- `⌘+↓`: zoom out
 
-Hold an arrow key to rotate continuously. Each step is 5°. The add-in never modifies the model; it only updates the active viewport camera.
+Hold a key to rotate or zoom continuously. Each step is 5° for rotation and about 1.2× for zoom. The add-in never modifies the model; it only updates the active viewport camera.
 
 ## 自定义按键绑定
 
@@ -60,12 +68,14 @@ Hold an arrow key to rotate continuously. Each step is 5°. The add-in never mod
     "right": "D",
     "up": "W",
     "down": "S",
-    "roll_modifier": "SHIFT"
+    "roll_modifier": "SHIFT",
+    "zoom_in": "PAGEUP",
+    "zoom_out": "PAGEDOWN"
   }
 }
 ```
 
-保存后会自动生效，无需重启插件。默认旋转键为 `LEFT`、`RIGHT`、`UP`、`DOWN`；桶滚修饰键默认 Windows 为 `CTRL`、macOS 为 `COMMAND`。例如改用 `SHIFT` 后，`Shift+Right` 和 `Shift+Left` 执行桶滚。`settings.json` 在 Windows 与 macOS 上通用（路径自动适配），键名写法一致。
+保存后会自动生效，无需重启插件。默认旋转键为 `LEFT`、`RIGHT`、`UP`、`DOWN`；桶滚修饰键默认 Windows 为 `CTRL`、macOS 为 `COMMAND`；缩放键默认为 `PAGEUP` / `PAGEDOWN`（Windows），macOS 上 `⌘+↑` / `⌘+↓` 缩放无需额外配置。例如改用 `SHIFT` 后，`Shift+Right` 和 `Shift+Left` 执行桶滚。`settings.json` 在 Windows 与 macOS 上通用（路径自动适配），键名写法一致。
 
 支持：
 
@@ -76,7 +86,7 @@ Hold an arrow key to rotate continuously. Each step is 5°. The add-in never mod
 - 修饰键：`CTRL`、`SHIFT`、`ALT`，以及仅 macOS 的 `COMMAND`
 - 常用键：`SPACE`、`ENTER`、`TAB`、`ESC`、`HOME`、`END`、`PAGEUP`、`PAGEDOWN`、`INSERT`、`DELETE`
 
-四个动作必须绑定到不同按键。配置无效时，插件会自动回退到默认方向键，并将原因写入 Fusion 日志。
+六个动作必须绑定到不同按键。配置无效时，插件会自动回退到默认方向键，并将原因写入 Fusion 日志。
 
 ## 安装 / Install
 
@@ -101,15 +111,16 @@ Hold an arrow key to rotate continuously. Each step is 5°. The add-in never mod
 > "Input Monitoring / Accessibility" permission (System Settings → Privacy & Security).
 > Without it the add-in cannot read the arrow keys. Restart Fusion after granting access.
 
-## 调整旋转速度
+## 调整旋转和缩放速度
 
 编辑 `ArrowViewCube.py` 顶部的：
 
 ```python
 STEP_DEGREES = 5.0
+ZOOM_FACTOR = 1.2
 ```
 
-数值越大，每次按键旋转得越快。修改后，在 Fusion 的“附加模块”窗口中停止并重新运行插件。
+`STEP_DEGREES` 越大，每次按键旋转得越快。`ZOOM_FACTOR` 越大，每次按键缩放得越快。修改后，在 Fusion 的“附加模块”窗口中停止并重新运行插件。
 
 ## 限制 / Limitations
 
