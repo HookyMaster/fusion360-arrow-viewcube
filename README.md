@@ -13,15 +13,39 @@ A cross-platform Autodesk Fusion 360 add-in for Windows and macOS. Rotate the ac
 
 Download the latest `ArrowViewCube-vX.Y.Z.zip` from the [Releases](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/latest) page.
 
-## 操作
+## 操作 / Controls
+
+**Windows**（桶滚修饰键默认 `Ctrl`）：
 
 - `←` / `→`：水平旋转
 - `↑` / `↓`：垂直旋转
 - `Ctrl+→`：向右桶滚
 - `Ctrl+←`：向左桶滚
-- 按住方向键：连续旋转
 
-每次旋转 5°。插件不会修改模型，只会更新当前视口相机。
+**macOS**（桶滚修饰键默认 `⌘ Command`）：
+
+- `←` / `→`：水平旋转
+- `↑` / `↓`：垂直旋转
+- `⌘+→`：向右桶滚
+- `⌘+←`：向左桶滚
+
+按住方向键可连续旋转。每次旋转 5°。插件不会修改模型，只会更新当前视口相机。
+
+**Windows** (barrel-roll modifier defaults to `Ctrl`):
+
+- `←` / `→`: horizontal orbit
+- `↑` / `↓`: vertical orbit
+- `Ctrl+→`: roll right
+- `Ctrl+←`: roll left
+
+**macOS** (barrel-roll modifier defaults to `⌘ Command`):
+
+- `←` / `→`: horizontal orbit
+- `↑` / `↓`: vertical orbit
+- `⌘+→`: roll right
+- `⌘+←`: roll left
+
+Hold an arrow key to rotate continuously. Each step is 5°. The add-in never modifies the model; it only updates the active viewport camera.
 
 ## 自定义按键绑定
 
@@ -34,12 +58,12 @@ Download the latest `ArrowViewCube-vX.Y.Z.zip` from the [Releases](https://githu
     "right": "D",
     "up": "W",
     "down": "S",
-    "roll_modifier": "CTRL"
+    "roll_modifier": "SHIFT"
   }
 }
 ```
 
-保存后会自动生效，无需重启插件。默认旋转键为 `LEFT`、`RIGHT`、`UP`、`DOWN`，桶滚修饰键为 `CTRL`。例如改用 `SHIFT` 后，`Shift+Right` 和 `Shift+Left` 执行桶滚。
+保存后会自动生效，无需重启插件。默认旋转键为 `LEFT`、`RIGHT`、`UP`、`DOWN`；桶滚修饰键默认 Windows 为 `CTRL`、macOS 为 `COMMAND`。例如改用 `SHIFT` 后，`Shift+Right` 和 `Shift+Left` 执行桶滚。`settings.json` 在 Windows 与 macOS 上通用（路径自动适配），键名写法一致。
 
 支持：
 
@@ -47,6 +71,7 @@ Download the latest `ArrowViewCube-vX.Y.Z.zip` from the [Releases](https://githu
 - 字母：`A`–`Z`
 - 数字：`0`–`9`
 - 功能键：`F1`–`F12`
+- 修饰键：`CTRL`、`SHIFT`、`ALT`，以及仅 macOS 的 `COMMAND`
 - 常用键：`SPACE`、`ENTER`、`TAB`、`ESC`、`HOME`、`END`、`PAGEUP`、`PAGEDOWN`、`INSERT`、`DELETE`
 
 四个动作必须绑定到不同按键。配置无效时，插件会自动回退到默认方向键，并将原因写入 Fusion 日志。

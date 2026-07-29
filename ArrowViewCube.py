@@ -25,7 +25,8 @@ DEFAULT_BINDINGS = {
     'right': 'RIGHT',
     'up': 'UP',
     'down': 'DOWN',
-    'roll_modifier': 'CTRL',
+    # Platform-appropriate default modifier: Command on macOS, Ctrl on Windows.
+    'roll_modifier': 'COMMAND' if IS_MAC else 'CTRL',
 }
 WINDOWS_KEYS = {
     'BACKSPACE': 0x08,
@@ -55,6 +56,7 @@ MAC_KEYS = {
     'SHIFT': 0x38,
     'CTRL': 0x3B,
     'ALT': 0x3A,
+    'COMMAND': 0x37,
     'ESC': 0x35,
     'SPACE': 0x31,
     'PAGEUP': 0x74,
@@ -136,7 +138,9 @@ def _key_name_to_vk(name):
 def _load_bindings():
     bindings = dict(DEFAULT_BINDINGS)
     try:
-        with open(SETTINGS_PATH, 'r', encoding='utf-8') as settings_file:
+        # utf-8-sig strips an optional BOM so files saved by editors that add
+        # one (e.g. Windows Notepad) still parse correctly on both platforms.
+        with open(SETTINGS_PATH, 'r', encoding='utf-8-sig') as settings_file:
             settings = json.load(settings_file)
         configured = settings.get('bindings', {})
         for action in DEFAULT_BINDINGS:
