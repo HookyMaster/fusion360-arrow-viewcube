@@ -3,7 +3,9 @@
 [![Release](https://img.shields.io/github/v/release/HookyMaster/fusion360-arrow-viewcube?label=release)](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/latest)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-Windows 版 Autodesk Fusion 360 插件。Fusion 窗口位于前台时，使用键盘方向键旋转当前三维视图。
+适用于 Windows 和 macOS 的 Autodesk Fusion 360 插件。Fusion 窗口位于前台时，使用键盘方向键旋转当前三维视图。
+
+A cross-platform Autodesk Fusion 360 add-in for Windows and macOS. Rotate the active 3D view with the keyboard arrow keys while Fusion is in the foreground.
 
 ## 下载 / Download
 
@@ -49,13 +51,28 @@ Download the latest `ArrowViewCube-vX.Y.Z.zip` from the [Releases](https://githu
 
 四个动作必须绑定到不同按键。配置无效时，插件会自动回退到默认方向键，并将原因写入 Fusion 日志。
 
-## 安装
+## 安装 / Install
 
-1. 将整个 `ArrowViewCube` 文件夹复制到：
-   `%APPDATA%\Autodesk\Autodesk Fusion 360\API\AddIns\`
+1. 将整个 `ArrowViewCube` 文件夹复制到插件目录：
+   - Windows: `%APPDATA%\Autodesk\Autodesk Fusion 360\API\AddIns\`
+   - macOS: `~/Library/Application Support/Autodesk/Autodesk Fusion 360/API/AddIns/`
 2. 在 Fusion 360 中打开“实用程序”→“附加模块”。
 3. 选择 `ArrowViewCube`，点击“运行”。
 4. 若要随 Fusion 启动，请勾选“启动时运行”。
+
+> macOS 注意：首次运行时，系统可能要求为 Fusion 360 授予“输入监控 / 辅助功能”权限
+> （系统设置 → 隐私与安全性）。未授权时插件无法读取方向键。授权后需重启 Fusion。
+
+1. Copy the entire `ArrowViewCube` folder into the add-ins directory:
+   - Windows: `%APPDATA%\Autodesk\Autodesk Fusion 360\API\AddIns\`
+   - macOS: `~/Library/Application Support/Autodesk/Autodesk Fusion 360/API/AddIns/`
+2. In Fusion 360 open Utilities → Add-Ins.
+3. Select `ArrowViewCube` and click Run.
+4. Tick "Run on startup" to load it automatically.
+
+> macOS note: on first run the system may ask you to grant Fusion 360
+> "Input Monitoring / Accessibility" permission (System Settings → Privacy & Security).
+> Without it the add-in cannot read the arrow keys. Restart Fusion after granting access.
 
 ## 调整旋转速度
 
@@ -67,10 +84,15 @@ STEP_DEGREES = 5.0
 
 数值越大，每次按键旋转得越快。修改后，在 Fusion 的“附加模块”窗口中停止并重新运行插件。
 
-## 限制
+## 限制 / Limitations
 
-- 仅支持 Windows。
+- 支持 Windows 与 macOS（不支持 Linux，这是 Fusion 360 本身的限制）。
+- macOS 上需要为 Fusion 360 授予输入监控权限才能读取按键。
 - 方向键由系统状态轮询读取，不会吞掉原有按键事件；若某个 Fusion 命令本身使用方向键，两个行为可能同时发生。
+
+- Supports Windows and macOS (Linux is not supported, a Fusion 360 limitation).
+- On macOS, Fusion 360 must be granted input-monitoring permission to read key presses.
+- Arrow keys are read by polling system key state and do not swallow the original key events; if a Fusion command itself uses the arrow keys, both actions may occur at once.
 
 ## 许可证 / License
 

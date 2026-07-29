@@ -3,9 +3,14 @@ import ctypes
 import math
 import os
 import json
+import platform
 import threading
 import time
 import traceback
+
+
+IS_MAC = platform.system() == 'Darwin'
+IS_WINDOWS = platform.system() == 'Windows'
 
 
 EVENT_ID = 'hookmaster.arrow_view_cube.rotate'
@@ -22,7 +27,7 @@ DEFAULT_BINDINGS = {
     'down': 'DOWN',
     'roll_modifier': 'CTRL',
 }
-NAMED_KEYS = {
+WINDOWS_KEYS = {
     'BACKSPACE': 0x08,
     'TAB': 0x09,
     'ENTER': 0x0D,
@@ -42,6 +47,53 @@ NAMED_KEYS = {
     'INSERT': 0x2D,
     'DELETE': 0x2E,
 }
+# macOS virtual key codes (kVK_ constants from Carbon/HIToolbox).
+MAC_KEYS = {
+    'BACKSPACE': 0x33,
+    'TAB': 0x30,
+    'ENTER': 0x24,
+    'SHIFT': 0x38,
+    'CTRL': 0x3B,
+    'ALT': 0x3A,
+    'ESC': 0x35,
+    'SPACE': 0x31,
+    'PAGEUP': 0x74,
+    'PAGEDOWN': 0x79,
+    'END': 0x77,
+    'HOME': 0x73,
+    'LEFT': 0x7B,
+    'UP': 0x7E,
+    'RIGHT': 0x7C,
+    'DOWN': 0x7D,
+    'INSERT': 0x72,
+    'DELETE': 0x75,
+    'F1': 0x7A,
+    'F2': 0x78,
+    'F3': 0x63,
+    'F4': 0x76,
+    'F5': 0x60,
+    'F6': 0x61,
+    'F7': 0x62,
+    'F8': 0x64,
+    'F9': 0x65,
+    'F10': 0x6D,
+    'F11': 0x67,
+    'F12': 0x6F,
+}
+# macOS ANSI letter keycodes (kVK_ANSI_*). Unlike Windows, macOS letter codes
+# are not ASCII values, so they must be mapped explicitly.
+MAC_LETTERS = {
+    'A': 0x00, 'B': 0x0B, 'C': 0x08, 'D': 0x02, 'E': 0x0E, 'F': 0x03,
+    'G': 0x05, 'H': 0x04, 'I': 0x22, 'J': 0x26, 'K': 0x28, 'L': 0x25,
+    'M': 0x2E, 'N': 0x2D, 'O': 0x1F, 'P': 0x23, 'Q': 0x0C, 'R': 0x0F,
+    'S': 0x01, 'T': 0x11, 'U': 0x20, 'V': 0x09, 'W': 0x0D, 'X': 0x07,
+    'Y': 0x10, 'Z': 0x06,
+}
+# macOS ANSI digit keycodes (kVK_ANSI_*).
+MAC_DIGITS = {
+    '0': 0x1D, '1': 0x12, '2': 0x13, '3': 0x14, '4': 0x15,
+    '5': 0x17, '6': 0x16, '7': 0x1A, '8': 0x1C, '9': 0x19,
+}
 
 _app = None
 _custom_event = None
@@ -57,16 +109,24 @@ _event_queued = False
 
 def _key_name_to_vk(name):
     normalized = str(name).strip().upper()
-    if normalized in NAMED_KEYS:
-        return NAMED_KEYS[normalized]
-    if len(normalized) == 1 and (
-        'A' <= normalized <= 'Z' or '0' <= normalized <= '9'
-    ):
-        return ord(normalized)
-    if normalized.startswith('F') and normalized[1:].isdigit():
-        number = int(normalized[1:])
-        if 1 <= number <= 12:
-            return 0x6F + number
+    if IS_MAC:
+        if normalized in MAC_KEYS:
+            return MAC_KEYS[normalized]
+        if normalized in MAC_LETTERS:
+            return MAC_LETTERS[normalized]
+        if normalized in MAC_DIGITS:
+            return MAC_DIGITS[normalized]
+    else:
+        if normalized in WINDOWS_KEYS:
+            return WINDOWS_KEYS[normalized]
+        if len(normalized) == 1 and (
+            'A' <= normalized <= 'Z' or '0' <= normalized <= '9'
+        ):
+            return ord(normalized)
+        if normalized.startswith('F') and normalized[1:].isdigit():
+            number = int(normalized[1:])
+            if 1 <= number <= 12:
+                return 0x6F + number
     raise ValueError(
         'Unsupported key "{}". Use arrows, A-Z, 0-9, F1-F12, SPACE, '
         'ENTER, TAB, ESC, HOME, END, PAGEUP, PAGEDOWN, INSERT, or DELETE.'.format(name)
@@ -199,7 +259,39 @@ class _RotateEventHandler(adsk.core.CustomEventHandler):
             _app.log('ArrowViewCube error:\n' + traceback.format_exc())
 
 
-def _fusion_is_foreground():
+_mac_carbon = None
+
+
+def _mac_load_carbon():
+    global _mac_carbon
+    if _mac_carbon is None:
+        carbon = ctypes.cdll.LoadLibrary(
+            '/System/Library/Frameworks/Carbon.framework/Carbon'
+        )
+        carbon.GetKeys.argtypes = [ctypes.c_void_p]
+        carbon.GetKeys.restype = None
+        _mac_carbon = carbon
+    return _mac_carbon
+
+
+def _key_down_windows(code):
+    return bool(ctypes.windll.user32.GetAsyncKeyState(code) & 0x8000)
+
+
+def _key_down_mac(code):
+    # Carbon GetKeys fills a 128-bit bitmap of currently pressed keys.
+    key_map = (ctypes.c_uint8 * 16)()
+    _mac_load_carbon().GetKeys(ctypes.byref(key_map))
+    return bool(key_map[code >> 3] & (1 << (code & 7)))
+
+
+def _key_down(code):
+    if IS_MAC:
+        return _key_down_mac(code)
+    return _key_down_windows(code)
+
+
+def _fusion_is_foreground_windows():
     user32 = ctypes.windll.user32
     foreground = user32.GetForegroundWindow()
     if not foreground:
@@ -207,6 +299,46 @@ def _fusion_is_foreground():
     process_id = ctypes.c_ulong()
     user32.GetWindowThreadProcessId(foreground, ctypes.byref(process_id))
     return process_id.value == os.getpid()
+
+
+def _fusion_is_foreground_mac():
+    # Compare the frontmost app's PID with ours via the AppKit ObjC runtime.
+    try:
+        libobjc = ctypes.cdll.LoadLibrary('libobjc.dylib')
+        ctypes.cdll.LoadLibrary(
+            '/System/Library/Frameworks/AppKit.framework/AppKit'
+        )
+        objc_getClass = libobjc.objc_getClass
+        objc_getClass.restype = ctypes.c_void_p
+        objc_getClass.argtypes = [ctypes.c_char_p]
+        sel_registerName = libobjc.sel_registerName
+        sel_registerName.restype = ctypes.c_void_p
+        sel_registerName.argtypes = [ctypes.c_char_p]
+        objc_msgSend = libobjc.objc_msgSend
+
+        workspace_cls = objc_getClass(b'NSWorkspace')
+        shared_sel = sel_registerName(b'sharedWorkspace')
+        frontmost_sel = sel_registerName(b'frontmostApplication')
+        pid_sel = sel_registerName(b'processIdentifier')
+
+        objc_msgSend.restype = ctypes.c_void_p
+        objc_msgSend.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        workspace = objc_msgSend(workspace_cls, shared_sel)
+        frontmost = objc_msgSend(workspace, frontmost_sel)
+
+        objc_msgSend.restype = ctypes.c_int32
+        objc_msgSend.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        front_pid = objc_msgSend(frontmost, pid_sel)
+        return front_pid == os.getpid()
+    except Exception:
+        # Fail open: keep rotating if foreground state cannot be determined.
+        return True
+
+
+def _fusion_is_foreground():
+    if IS_MAC:
+        return _fusion_is_foreground_mac()
+    return _fusion_is_foreground_windows()
 
 
 def _queue_rotation(dx, dy, roll=0):
@@ -224,7 +356,6 @@ def _queue_rotation(dx, dy, roll=0):
 
 
 def _poll_keyboard():
-    user32 = ctypes.windll.user32
     bindings = _load_bindings()
     settings_mtime = None
     pressed_since = {}
@@ -249,7 +380,7 @@ def _poll_keyboard():
         now = time.monotonic()
         fired = []
         for key in keys:
-            is_down = bool(user32.GetAsyncKeyState(key) & 0x8000)
+            is_down = _key_down(key)
             if not is_down:
                 pressed_since.pop(key, None)
                 continue
@@ -267,9 +398,7 @@ def _poll_keyboard():
 
         horizontal = int(bindings['right'] in fired) - int(bindings['left'] in fired)
         dy = int(bindings['up'] in fired) - int(bindings['down'] in fired)
-        modifier_down = bool(
-            user32.GetAsyncKeyState(bindings['roll_modifier']) & 0x8000
-        )
+        modifier_down = _key_down(bindings['roll_modifier'])
         dx = 0 if modifier_down else horizontal
         roll = horizontal if modifier_down else 0
         if dx or dy or roll:
