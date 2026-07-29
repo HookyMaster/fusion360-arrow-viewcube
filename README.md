@@ -9,11 +9,11 @@ A cross-platform Autodesk Fusion 360 add-in for Windows and macOS. Rotate and zo
 
 ## 下载 / Download
 
-最新版本 **v1.3.0**（支持 Windows 和 macOS）：
-[直接下载 ArrowViewCube-v1.3.0.zip](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/download/v1.3.0/ArrowViewCube-v1.3.0.zip)，或前往 [Releases](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/latest) 页面查看所有版本。
+最新版本 **v1.4.0**（支持 Windows 和 macOS）：
+[直接下载 ArrowViewCube-v1.4.0.zip](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/download/v1.4.0/ArrowViewCube-v1.4.0.zip)，或前往 [Releases](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/latest) 页面查看所有版本。
 
-Latest release **v1.3.0** (Windows and macOS):
-[Download ArrowViewCube-v1.3.0.zip directly](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/download/v1.3.0/ArrowViewCube-v1.3.0.zip), or visit the [Releases](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/latest) page for all versions.
+Latest release **v1.4.0** (Windows and macOS):
+[Download ArrowViewCube-v1.4.0.zip directly](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/download/v1.4.0/ArrowViewCube-v1.4.0.zip), or visit the [Releases](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/latest) page for all versions.
 
 ## 操作 / Controls
 
