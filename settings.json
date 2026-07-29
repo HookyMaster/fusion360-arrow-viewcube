@@ -1,0 +1,9 @@
+﻿{
+    "bindings":  {
+                     "left":  "LEFT",
+                     "right":  "RIGHT",
+                     "up":  "UP",
+                     "down":  "DOWN",
+                     "roll_modifier":  "CTRL"
+                 }
+}

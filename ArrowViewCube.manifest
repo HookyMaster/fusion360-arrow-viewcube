@@ -1,0 +1,12 @@
+{
+  "autodeskProduct": "Fusion360",
+  "type": "addin",
+  "author": "HookyMaster",
+  "description": {
+    "": "Rotate the active Fusion 360 view with the keyboard arrow keys.",
+    "zh-CN": "使用键盘方向键旋转 Fusion 360 当前视图。"
+  },
+  "version": "1.2.1",
+  "runOnStartup": true,
+  "supportedOS": "windows"
+}
