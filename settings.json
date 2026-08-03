@@ -4,6 +4,7 @@
         "right": "RIGHT",
         "up": "UP",
         "down": "DOWN",
+        "pan_modifier": "SHIFT",
         "zoom_in": "PAGEUP",
         "zoom_out": "PAGEDOWN"
     }

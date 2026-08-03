@@ -3,9 +3,9 @@
 [![Release](https://img.shields.io/github/v/release/HookyMaster/fusion360-arrow-viewcube?label=release)](https://github.com/HookyMaster/fusion360-arrow-viewcube/releases/latest)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-适用于 Windows 和 macOS 的 Autodesk Fusion 360 插件。Fusion 窗口位于前台时，使用键盘旋转和缩放当前三维视图。
+适用于 Windows 和 macOS 的 Autodesk Fusion 360 插件。Fusion 窗口位于前台时，使用键盘旋转、平移和缩放当前三维视图。
 
-A cross-platform Autodesk Fusion 360 add-in for Windows and macOS. Rotate and zoom the active 3D view with the keyboard while Fusion is in the foreground.
+A cross-platform Autodesk Fusion 360 add-in for Windows and macOS. Rotate, pan and zoom the active 3D view with the keyboard while Fusion is in the foreground.
 
 ## 下载 / Download
 
@@ -41,6 +41,20 @@ Latest release **v1.4.0** (Windows and macOS):
 - 桶滚围绕当前视线方向旋转画面，不改变观察角度。
 - 每步同样 5°。
 
+### 平移
+
+按住 `Shift` + 方向键，视图沿屏幕方向平移（相机与目标点一起移动，视角方向不变）：
+
+| 按键 | 效果 |
+|------|------|
+| `Shift+←` | 向左平移 |
+| `Shift+→` | 向右平移 |
+| `Shift+↑` | 向上平移 |
+| `Shift+↓` | 向下平移 |
+
+- 行为与 Fusion 的 **Ctrl+鼠标中键拖动**一致：画面内容跟随按键方向移动，**ViewCube 保持不动**（因为视角方向没有改变）。
+- 每步平移量为当前视图范围的 **10%**（`PAN_FRACTION`，可在代码中调整）：视野越大平移越快，缩放后平移自动变慢，手感符合直觉。
+
 ### 缩放
 
 提供**两套等价方式**，可任选其一或组合使用：
@@ -60,6 +74,8 @@ Latest release **v1.4.0** (Windows and macOS):
 
 - 插件**不会修改任何模型几何**，只更新当前视口的相机参数。
 - 操作仅在 Fusion 位于前台（活动窗口）时响应，切走即暂停。
+- 方向键的作用（旋转 / 平移 / 桶滚缩放）在**按下瞬间锁定**，松手前不会改变——即使修饰键先于方向键松开也不会串键。
+- `PageUp`/`PageDown` 缩放在任何修饰键状态下都生效。
 
 ---
 
@@ -87,6 +103,20 @@ Hold the **modifier key** (Windows: `Ctrl`; macOS: `⌘ Command`) simultaneously
 - Roll rotates the view around the current line of sight without changing the viewing angle.
 - Each step is also 5°.
 
+### Pan
+
+Hold `Shift` + an arrow key to slide the view along the screen axes (camera and target move together; the viewing direction stays fixed):
+
+| Key | Effect |
+|-----|--------|
+| `Shift+←` | Pan left |
+| `Shift+→` | Pan right |
+| `Shift+↑` | Pan up |
+| `Shift+↓` | Pan down |
+
+- Behaves exactly like Fusion's **Ctrl+middle-mouse-button drag**: the content follows the arrow direction and the **ViewCube stays still** (the viewing direction never changes).
+- Each pan step moves **10%** of the current view extents (`PAN_FRACTION`, adjustable in code): panning is faster when zoomed out and automatically slows down when zoomed in.
+
 ### Zoom
 
 Two equivalent methods — use whichever is convenient:
@@ -106,6 +136,8 @@ Two equivalent methods — use whichever is convenient:
 
 - The add-in **never modifies model geometry** — it only updates the active viewport camera.
 - Controls respond only while Fusion is the foreground (active) window.
+- What an arrow key does (orbit / pan / roll-zoom) is **latched the instant it is pressed** and never changes until released — even if you release the modifier before the arrow key, the action stays consistent.
+- `PageUp`/`PageDown` zoom works regardless of which modifier is held.
 
 ## 自定义按键绑定 / Custom Key Bindings
 
@@ -139,6 +171,7 @@ Edit `settings.json` in the add-in folder. The file uses **incremental override*
     "up": "UP",
     "down": "DOWN",
     "roll_modifier": "CTRL",
+    "pan_modifier": "SHIFT",
     "zoom_in": "PAGEUP",
     "zoom_out": "PAGEDOWN"
   }
@@ -150,15 +183,16 @@ Edit `settings.json` in the add-in folder. The file uses **incremental override*
 | `left` / `right` | 水平旋转 | `LEFT` / `RIGHT` |
 | `up` / `down` | 垂直旋转 | `UP` / `DOWN` |
 | `roll_modifier` | 桶滚 + 缩放修饰键 | `CTRL` / `COMMAND` |
+| `pan_modifier` | 平移修饰键 | `SHIFT` / `SHIFT` |
 | `zoom_in` / `zoom_out` | 独立缩放键 | `PAGEUP` / `PAGEDOWN` |
 
 > `roll_modifier` 在 macOS 上默认为 `COMMAND`（无需在 settings.json 中写出，代码自动适配平台）。
 
 ### 修改示例 / Example
 
-例如想把旋转改为 WASD、修饰键改为 Shift：
+例如想把旋转改为 WASD、修饰键改为 Alt：
 
-For example, to switch orbit to WASD and the modifier to Shift:
+For example, to switch orbit to WASD and the modifier to Alt:
 
 ```json
 {
@@ -167,14 +201,14 @@ For example, to switch orbit to WASD and the modifier to Shift:
     "right": "D",
     "up": "W",
     "down": "S",
-    "roll_modifier": "SHIFT"
+    "roll_modifier": "ALT"
   }
 }
 ```
 
-此时 `Shift+A`/`Shift+D` 执行桶滚，`Shift+W`/`Shift+S` 执行缩放；`PageUp`/`PageDown` 仍可用于缩放（未改动的项保持默认）。
+此时 `Alt+A`/`Alt+D` 执行桶滚，`Alt+W`/`Alt+S` 执行缩放；`PageUp`/`PageDown` 仍可用于缩放，`Shift+方向键` 仍可平移（未改动的项保持默认）。
 
-Here `Shift+A`/`Shift+D` roll, `Shift+W`/`Shift+S` zoom; `PageUp`/`PageDown` still zoom (unchanged entries keep their defaults).
+Here `Alt+A`/`Alt+D` roll, `Alt+W`/`Alt+S` zoom; `PageUp`/`PageDown` still zoom and `Shift+arrows` still pan (unchanged entries keep their defaults).
 
 ### 支持的键名 / Supported key names
 
@@ -188,11 +222,13 @@ Here `Shift+A`/`Shift+D` roll, `Shift+W`/`Shift+S` zoom; `PageUp`/`PageDown` sti
 ### 约束 / Constraints
 
 - `left`/`right`/`up`/`down` 四个动作**必须绑定到不同按键**，否则配置无效。
+- `roll_modifier` 与 `pan_modifier` **不要设为同一个键**（否则桶滚/缩放修饰键优先生效，平移将不可用）。
 - 配置无效时，插件**静默回退到默认方向键**，错误原因写入 Fusion 日志和插件目录下的 `debug.log`。
 - 保存后**立即生效**，无需重启插件。
 - `settings.json` 在 Windows 与 macOS 上通用，键名写法一致，路径自动适配。
 
 - The four orbit actions **must each use a different key**, otherwise the config is rejected.
+- Do **not** set `roll_modifier` and `pan_modifier` to the same key (the roll modifier takes precedence and pan would become unreachable).
 - On invalid config the add-in **silently falls back to the default arrow keys**; the reason is logged to Fusion's log and to `debug.log` in the add-in folder.
 - Changes take effect **immediately** on save — no restart needed.
 - `settings.json` works identically on Windows and macOS with the same key names.
@@ -220,16 +256,29 @@ Here `Shift+A`/`Shift+D` roll, `Shift+W`/`Shift+S` zoom; `PageUp`/`PageDown` sti
 > "Input Monitoring / Accessibility" permission (System Settings → Privacy & Security).
 > Without it the add-in cannot read the arrow keys. Restart Fusion after granting access.
 
-## 调整旋转和缩放速度
+## 调整旋转、缩放和平移速度
 
 编辑 `ArrowViewCube.py` 顶部的：
 
 ```python
 STEP_DEGREES = 5.0
 ZOOM_STEP = 0.85
+PAN_FRACTION = 0.10
 ```
 
-`STEP_DEGREES` 越大，每次按键旋转得越快。`ZOOM_STEP` 越接近 0，每次按键缩放幅度越大（小于 1，放大时视图范围乘以该值）。修改后，在 Fusion 的“附加模块”窗口中停止并重新运行插件。
+`STEP_DEGREES` 越大，每次按键旋转得越快。`ZOOM_STEP` 越接近 0，每次按键缩放幅度越大（小于 1，放大时视图范围乘以该值）。`PAN_FRACTION` 越大，每次平移的步长越大（占当前视图范围的比例）。修改后，在 Fusion 的"附加模块"窗口中停止并重新运行插件。
+
+## Adjusting rotation, zoom and pan speed
+
+Edit the constants at the top of `ArrowViewCube.py`:
+
+```python
+STEP_DEGREES = 5.0
+ZOOM_STEP = 0.85
+PAN_FRACTION = 0.10
+```
+
+A larger `STEP_DEGREES` rotates faster per key press. The closer `ZOOM_STEP` is to 0, the larger the zoom step (it is below 1; zoom-in multiplies the view extents by this value). A larger `PAN_FRACTION` makes each pan step longer (as a fraction of the current view extents). After editing, stop and re-run the add-in in Fusion's Add-Ins window.
 
 ## 限制 / Limitations
 
@@ -240,6 +289,12 @@ ZOOM_STEP = 0.85
 - Supports Windows and macOS (Linux is not supported, a Fusion 360 limitation).
 - On macOS, Fusion 360 must be granted input-monitoring permission to read key presses.
 - Arrow keys are read by polling system key state and do not swallow the original key events; if a Fusion command itself uses the arrow keys, both actions may occur at once.
+
+## 故障排查 / Troubleshooting
+
+插件启动时会把诊断信息写入插件目录下的 `debug.log`（按键分派、相机变化等）。如果按键没有按预期工作，先查看该文件；报告问题时附上它有助于定位。
+
+The add-in writes diagnostics to `debug.log` in the add-in folder (key dispatch, camera changes, etc.). If a key does not behave as expected, check that file first; attach it when reporting an issue.
 
 ## 许可证 / License
 

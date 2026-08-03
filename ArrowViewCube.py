@@ -18,6 +18,9 @@ STEP_DEGREES = 5.0
 # Zoom scales the camera viewExtents (the proven Fusion zoom method). A value
 # < 1 shrinks the extents (zoom in); zoom-out uses the reciprocal.
 ZOOM_STEP = 0.85
+# Each pan step moves the camera by this fraction of the current viewExtents,
+# so panning covers more ground when zoomed out (matches the intuitive feel).
+PAN_FRACTION = 0.10
 POLL_INTERVAL_SECONDS = 0.015
 INITIAL_REPEAT_DELAY_SECONDS = 0.28
 REPEAT_INTERVAL_SECONDS = 0.045
@@ -41,6 +44,8 @@ DEFAULT_BINDINGS = {
     'down': 'DOWN',
     # Platform-appropriate default modifier: Command on macOS, Ctrl on Windows.
     'roll_modifier': 'COMMAND' if IS_MAC else 'CTRL',
+    # Pan modifier: Shift+arrows pan the view without changing direction.
+    'pan_modifier': 'SHIFT',
     # Dedicated zoom keys, read by the same poll loop as the arrows. They zoom
     # regardless of whether the roll modifier is held.
     'zoom_in': 'PAGEUP',
@@ -125,6 +130,8 @@ _pending_dx = 0
 _pending_dy = 0
 _pending_roll = 0
 _pending_zoom = 0
+_pending_pan_x = 0
+_pending_pan_y = 0
 _event_queued = False
 
 
@@ -218,7 +225,7 @@ def _rotate_vector(vector, axis, angle_radians):
     return _add(_add(term_1, term_2), term_3)
 
 
-def _rotate_camera(dx, dy, roll, zoom=0):
+def _rotate_camera(dx, dy, roll, zoom=0, pan_x=0, pan_y=0):
     viewport = _app.activeViewport
     if not viewport:
         return
@@ -249,12 +256,45 @@ def _rotate_camera(dx, dy, roll, zoom=0):
         roll_angle = math.radians(-STEP_DEGREES * roll)
         up = _rotate_vector(up, view_direction, roll_angle)
 
+    # Shift+arrows pan: translate eye and target together along the screen
+    # right/up axes so the viewing direction stays fixed. Step size scales
+    # with viewExtents so panning covers more ground when zoomed out.
+    # The camera moves OPPOSITE to the intended content motion, matching
+    # Fusion's Ctrl+middle-button pan (content follows the input direction).
+    if pan_x or pan_y:
+        view_direction = _normalized(_scaled(eye_offset, -1.0))
+        right = _normalized(_cross(view_direction, up))
+        step = camera.viewExtents * PAN_FRACTION
+        offset = _add(_scaled(right, -step * pan_x), _scaled(up, -step * pan_y))
+        old_target = target
+        old_up = camera.upVector
+        target = adsk.core.Point3D.create(
+            target.x + offset.x,
+            target.y + offset.y,
+            target.z + offset.z,
+        )
+        _debug_log(
+            'PAN pan_x={} pan_y={} target=({:.3f},{:.3f},{:.3f})->({:.3f},{:.3f},{:.3f}) '
+            'up=({:.3f},{:.3f},{:.3f})'.format(
+                pan_x, pan_y,
+                old_target.x, old_target.y, old_target.z,
+                target.x, target.y, target.z,
+                old_up.x, old_up.y, old_up.z,
+            )
+        )
+
     # Zoom: scale the camera viewExtents — the Fusion-native zoom method
     # (matches Autodesk's own approach). Zooming out uses the reciprocal.
     if zoom:
         extents = camera.viewExtents
         camera.viewExtents = extents * (ZOOM_STEP ** zoom)
 
+    # Write BOTH target and eye back. Panning reassigns the local `target`
+    # variable; without `camera.target = target` only the eye would move and
+    # Fusion would treat that as a direction change (the view rotates instead
+    # of panning — the ViewCube spins). Orbit/zoom leave target unchanged,
+    # so this line is a no-op for them.
+    camera.target = target
     camera.eye = adsk.core.Point3D.create(
         target.x + eye_offset.x,
         target.y + eye_offset.y,
@@ -266,26 +306,46 @@ def _rotate_camera(dx, dy, roll, zoom=0):
     viewport.camera = camera
     viewport.refresh()
 
+    # Verify the assignment stuck (target used to silently snap back to the
+    # orbit pivot). Logged for pans only, to keep the log small.
+    if pan_x or pan_y:
+        try:
+            applied = viewport.camera
+            _debug_log(
+                'APPLIED target=({:.3f},{:.3f},{:.3f}) eye=({:.3f},{:.3f},{:.3f}) fit={}'.format(
+                    applied.target.x, applied.target.y, applied.target.z,
+                    applied.eye.x, applied.eye.y, applied.eye.z,
+                    applied.isFitView,
+                )
+            )
+        except Exception:
+            _debug_log('APPLIED read-back failed:\n' + traceback.format_exc())
+
 
 class _RotateEventHandler(adsk.core.CustomEventHandler):
     def __init__(self):
         super().__init__()
 
     def notify(self, _args):
-        global _pending_dx, _pending_dy, _pending_roll, _pending_zoom, _event_queued
+        global _pending_dx, _pending_dy, _pending_roll, _pending_zoom
+        global _pending_pan_x, _pending_pan_y, _event_queued
         try:
             with _state_lock:
                 dx = _pending_dx
                 dy = _pending_dy
                 roll = _pending_roll
                 zoom = _pending_zoom
+                pan_x = _pending_pan_x
+                pan_y = _pending_pan_y
                 _pending_dx = 0
                 _pending_dy = 0
                 _pending_roll = 0
                 _pending_zoom = 0
+                _pending_pan_x = 0
+                _pending_pan_y = 0
                 _event_queued = False
-            if dx or dy or roll or zoom:
-                _rotate_camera(dx, dy, roll, zoom)
+            if dx or dy or roll or zoom or pan_x or pan_y:
+                _rotate_camera(dx, dy, roll, zoom, pan_x, pan_y)
         except Exception:
             _app.log('ArrowViewCube error:\n' + traceback.format_exc())
 
@@ -372,14 +432,17 @@ def _fusion_is_foreground():
     return _fusion_is_foreground_windows()
 
 
-def _queue_rotation(dx, dy, roll=0, zoom=0):
-    global _pending_dx, _pending_dy, _pending_roll, _pending_zoom, _event_queued
+def _queue_rotation(dx, dy, roll=0, zoom=0, pan_x=0, pan_y=0):
+    global _pending_dx, _pending_dy, _pending_roll, _pending_zoom
+    global _pending_pan_x, _pending_pan_y, _event_queued
     should_fire = False
     with _state_lock:
         _pending_dx += dx
         _pending_dy += dy
         _pending_roll += roll
         _pending_zoom += zoom
+        _pending_pan_x += pan_x
+        _pending_pan_y += pan_y
         if not _event_queued:
             _event_queued = True
             should_fire = True
@@ -392,6 +455,12 @@ def _poll_keyboard():
     settings_mtime = None
     pressed_since = {}
     last_repeat = {}
+    # Each arrow key latches its action mode (orbit/pan/roll-zoom) at the
+    # instant it goes down and keeps it until released. Without this, a
+    # modifier released a split second before the arrow key would flip the
+    # still-pressed arrow into a different action (e.g. pan -> orbit),
+    # which visibly rotates the ViewCube during a pan gesture.
+    key_mode = {}
 
     while not _stop_event.wait(POLL_INTERVAL_SECONDS):
         try:
@@ -403,10 +472,12 @@ def _poll_keyboard():
             bindings = _load_bindings()
             pressed_since.clear()
             last_repeat.clear()
+            key_mode.clear()
 
         keys = tuple(bindings.values())
         if not _fusion_is_foreground():
             pressed_since.clear()
+            key_mode.clear()
             continue
 
         now = time.monotonic()
@@ -415,11 +486,19 @@ def _poll_keyboard():
             is_down = _key_down(key)
             if not is_down:
                 pressed_since.pop(key, None)
+                key_mode.pop(key, None)
                 continue
 
             if key not in pressed_since:
                 pressed_since[key] = now
                 last_repeat[key] = now
+                # Latch the mode from the modifier state at press time.
+                if _key_down(bindings['roll_modifier']):
+                    key_mode[key] = 'rollzoom'
+                elif _key_down(bindings['pan_modifier']):
+                    key_mode[key] = 'pan'
+                else:
+                    key_mode[key] = 'orbit'
                 fired.append(key)
             elif (
                 now - pressed_since[key] >= INITIAL_REPEAT_DELAY_SECONDS
@@ -428,30 +507,48 @@ def _poll_keyboard():
                 last_repeat[key] = now
                 fired.append(key)
 
-        horizontal = int(bindings['right'] in fired) - int(bindings['left'] in fired)
-        vertical = int(bindings['up'] in fired) - int(bindings['down'] in fired)
-        modifier_down = _key_down(bindings['roll_modifier'])
-        # Dedicated zoom keys (PageUp/PageDown by default) always zoom,
-        # regardless of the roll modifier.
-        page_zoom = int(bindings['zoom_in'] in fired) - int(bindings['zoom_out'] in fired)
+        # Unified for both platforms; the mode latched at press time decides
+        # what each arrow does:
+        #   orbit   -> horizontal: yaw,   vertical: pitch   (no modifier)
+        #   pan     -> horizontal: pan_x, vertical: pan_y   (Shift)
+        #   rollzoom-> horizontal: roll,  vertical: zoom    (Ctrl / Command)
+        # Dedicated zoom keys (PageUp/PageDown) always zoom regardless.
+        dx = dy = roll = zoom = pan_x = pan_y = 0
+        for key in fired:
+            if key == bindings['zoom_in']:
+                zoom += 1
+                continue
+            if key == bindings['zoom_out']:
+                zoom -= 1
+                continue
+            if key in (bindings['roll_modifier'], bindings['pan_modifier']):
+                continue
+            sign = 1 if key in (bindings['right'], bindings['up']) else -1
+            is_horizontal = key in (bindings['left'], bindings['right'])
+            mode = key_mode.get(key, 'orbit')
+            if mode == 'rollzoom':
+                if is_horizontal:
+                    roll += sign
+                else:
+                    zoom += sign
+            elif mode == 'pan':
+                if is_horizontal:
+                    pan_x += sign
+                else:
+                    pan_y += sign
+            else:
+                if is_horizontal:
+                    dx += sign
+                else:
+                    dy += sign
 
-        # Unified for both platforms: the modifier reassigns the axes.
-        # No modifier: horizontal->orbit yaw, vertical->orbit pitch.
-        # With modifier (Ctrl on Windows, Command on macOS):
-        #   horizontal->roll, vertical->zoom.
-        if modifier_down:
-            dx = 0
-            dy = 0
-            roll = horizontal
-            zoom = vertical + page_zoom
-        else:
-            dx = horizontal
-            dy = vertical
-            roll = 0
-            zoom = page_zoom
-
-        if dx or dy or roll or zoom:
-            _queue_rotation(dx, dy, roll, zoom)
+        if dx or dy or roll or zoom or pan_x or pan_y:
+            _debug_log(
+                'FRAME dx={} dy={} roll={} zoom={} pan_x={} pan_y={}'.format(
+                    dx, dy, roll, zoom, pan_x, pan_y
+                )
+            )
+            _queue_rotation(dx, dy, roll, zoom, pan_x, pan_y)
 
 
 def run(_context):

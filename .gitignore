@@ -16,5 +16,8 @@ Thumbs.db
 # Runtime diagnostics written by the add-in
 debug.log
 
+# Local release packaging artifacts
+ArrowViewCube-v*.zip
+
 # WorkBuddy local data
 .workbuddy/
