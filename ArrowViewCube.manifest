@@ -1,6 +1,7 @@
 {
   "autodeskProduct": "Fusion360",
   "type": "addin",
+  "id": "597aa96f-8f68-4665-a145-b01a9afe63d1",
   "author": "HookyMaster",
   "description": {
     "": "Rotate, pan and zoom the active Fusion 360 view with the keyboard.",
